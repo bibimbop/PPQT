@@ -367,6 +367,12 @@ class MainWindow(QMainWindow):
         # All these menu actions are parented to the editor, so their shortcuts
         # can supposedly be preempted by other widgets e.g. Notes, Words.
         #
+        editUndoAction = self.createAction("Undo", self.editor,
+            self.editor.undo, QKeySequence.Undo,
+            "Undo change")
+        editRedoAction = self.createAction("Redo", self.editor,
+            self.editor.redo, QKeySequence.Redo,
+            "Redo change")
         editCopyAction = self.createAction("&Copy", self.editor,
             self.editor.copy, QKeySequence.Copy,
             "Copy selection to clipboard")
@@ -376,6 +382,15 @@ class MainWindow(QMainWindow):
         editPasteAction = self.createAction("&Paste", self.editor,
             self.editor.paste, QKeySequence.Paste,
             "Paste clipboard at selection")
+        editFindAction = self.createAction("Find", self.editor,
+            lambda: IMC.findPanel.editKeyPress(IMC.ctl_F),
+            QKeySequence.Find, "Find")
+        editFindNextAction = self.createAction("Find Next", self.editor,
+            lambda: IMC.findPanel.editKeyPress(IMC.ctl_G),
+            QKeySequence.FindNext, "Find next")
+        editFindPreviousAction = self.createAction("Find Previous", self.editor,
+            lambda: IMC.findPanel.editKeyPress(IMC.ctl_shft_G),
+            QKeySequence.FindPrevious, "Find previous")
         editToUpperAction = self.createAction("to&Upper", None,
             self.editor.toUpperCase, QKeySequence(Qt.Key_U+Qt.CTRL),
             "Make selected text UPPERCASE")
@@ -411,8 +426,10 @@ class MainWindow(QMainWindow):
         #
         editMenu = self.menuBar().addMenu("&Edit")
         self.addActions(editMenu,
-            (editCopyAction, editCutAction, editPasteAction,
-             None, editToUpperAction, editToLowerAction, editToTitleAction))
+                        (editUndoAction, editRedoAction, None,
+                         editCopyAction, editCutAction, editPasteAction, None,
+                         editFindAction, editFindNextAction, editFindPreviousAction, None,
+                         editToUpperAction, editToLowerAction, editToTitleAction))
         if self.palettes :
             pal_menu = QMenu('Palettes',editMenu)
             for pal_obj in self.palettes :
