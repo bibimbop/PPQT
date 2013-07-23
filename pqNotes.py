@@ -151,13 +151,15 @@ class notesEditor(QPlainTextEdit):
                 pqMsgs.beep()
         else: # no { preceding the cursor on same line
             pqMsgs.beep()
+
     # Insert current page number as [ppp]. Conveniently, pqPngs saves the
     # index of the current page in the page table whenever the cursor moves.
     # (BUG: if there is no pngs folder, that won't happen)
     def insertPage(self):
+        print("FZ")
         tc = self.textCursor()
-        if IMC.currentImageNumber is not None:
-            tc.insertText("[{0}]".format(unicode(IMC.currentImageNumber)))
+        if IMC.currentFolioNumber is not None:
+            tc.insertText("[{0}]".format(unicode(IMC.currentFolioNumber)))
 
     # on ^p, look for [ppp] "near" our cursor in notes, and if found, tell
     # editor to go to that page text. See above for strategy.
