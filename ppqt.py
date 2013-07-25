@@ -214,6 +214,11 @@ pqPalette.IMC = IMC
 import pqView # html preview
 pqView.IMC = IMC
 
+import pqCheck # lang check
+if pqCheck.__version__ != __version__ :
+    print('pqCheck.py version {0}'.format(pqCheck.__version__))
+pqCheck.IMC = IMC
+
 import pqHelp # help panel
 pqHelp.IMC = IMC
 

@@ -75,6 +75,7 @@ import pqPngs
 import pqProps
 import pqPalette
 import pqView
+import pqCheck
 import pqWords
 # -------------------------------------------------------------------------#
 #
@@ -229,9 +230,16 @@ class MainWindow(QMainWindow):
         self.tabSet.addTab(self.pvwPanel, u"Pvw")
         self.connect(self, SIGNAL("docWillChange"), self.pvwPanel.docWillChange)
         self.connect(self, SIGNAL("docHasChanged"), self.pvwPanel.docHasChanged)
+
         #
-        # 10. Lastly, the Help panel:
+        # 10. Create the check language Panel
+        self.langPanel = pqCheck.langPanel()
+        self.tabSet.addTab(self.langPanel, u"Lang")
+        self.connect(self, SIGNAL("docWillChange"), self.langPanel.docWillChange)
+        self.connect(self, SIGNAL("docHasChanged"), self.langPanel.docHasChanged)
+
         #
+        # 11. Lastly, the Help panel:
         self.helpPanel = pqHelp.helpDisplay()
         self.tabSet.addTab(self.helpPanel, u"Help")
         #

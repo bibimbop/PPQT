@@ -119,6 +119,7 @@ class tricorder():
         self.editWidget = None # main QPlainTextEdit set up in pqMain
         self.spellCheck = None # spellcheck object from pqSpell
         self.mainWindow = None # ref to main window
+        self.xml_tags_lang = [] # HTML lang tags
 
         # Pointers initialized in pqMain to various major objects
         self.bookPath = None # absolute path to book file
