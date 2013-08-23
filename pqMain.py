@@ -738,95 +738,29 @@ class MainWindow(QMainWindow):
                 return self.fileSave()
         return True
 
-    # -----------------------------------------------------------------
-    # Infer the correct I/O codec for a file based on the filename.suffix
-    # and, for input files and only when necessary, based on file contents.
-    # Return a name string acceptable to QTextStream.setCodec() if the codec
-    # can be determined with good certainty. If not, return what the caller
-    # passes as a fall-back, defaulting to None.
-    #
-    # The input is a QFileInfo for the file of interest, a QFileInfo for
-    # its .meta file if there is one (a null QFileInfo if not), and a boolean
-    # forInput = True if the file is being loaded, not saved.
-    #
-    # PG policy is that etext filenames use suffix .txt regardless of encoding!
-    # PG permits ending the filename with -u[tf[8]] to indicate UTF or
-    # -l[tn[1]] to indicate Latin-1, e.g. foo-u.txt or foo-ltn1.txt.
-    # Without that hyphenated suffix a file could be US-ASCII, ISO-8859-1,
-    # UTF-8 or UTF-16 or who knows what. We look for these name-flags first.
-    #
-    # Next, if the file is input and a .meta file exists, look in that for our
-    # {{ENCODING X}} string and return that value.
-    #
-    # Next if the file suffix is .htm, .html, or .xml, we can ask the file.
-    # The HTML 4, 5, and XHTML standards say when page files are not in UTF-8
-    # they must have a charset= or encoding= parameter within the first 1024
-    # bytes, such as: <?xml version="1.0" encoding="UTF-8"?>
-    # or <meta charset="UTF-8"> or <meta... content="text/html;charset=UTF-8">
-    # We read the first 1024 bytes of an input file, or query the first 1024
-    # bytes of the output file in the editor workspace, for this parameter.
-    # If it is not there we return UTF-8.
-    #
-    # When those clues are not present, return fallBack.
+    # Infer the correct I/O codec for a file based on the content.
+    def inferTheCodec(self, filename):
+        rawdata = None
+        try:
+            with open(unicode(filename), "rb") as f:
+                rawdata = f.read()
+        except Exception:
+            return None
 
-    def inferTheCodec(self, fileInfo, metaInfo, forInput, fallBack = None):
-        # If the file was saved by us there is a .meta file. Somewhere in the
-        # first few lines of that should be {{ENCODING FOOBAR}}. If we find
-        # that, return FOOBAR. Make this test first as it supercedes a file suffix.
-        if forInput and metaInfo.exists() :
-            # Open the .meta file, which is always UTF-8
-            (mStream, mHandle) = self.openSomeFile(
-                metaInfo.absoluteFilePath(), QIODevice.ReadOnly, self.utfEncoding )
-            if mStream is not None :
-                metaRE = QRegExp(u'''\{\{ENCODING ([\w\-\_\d]+)\}\}''')
-                mqs = mStream.read(512)
-                mHandle.close()
-                if metaRE.indexIn(mqs) > -1 :
-                    return metaRE.cap(1)
-        # Input or output, next test is for a -u or -l flag in the filename.
-        fileName = fileInfo.fileName() # const QString of the name in the path
-        utfRE = QRegExp(u'-(u|utf|utf8)\.')
-        if utfRE.indexIn(fileName) > -1 :
-            return self.utfEncoding # filename ends in -u[tf[8]].
-        ltnRE = QRegExp(u'-(l|ltn|ltn1)\.')
-        if ltnRE.indexIn(fileName) > -1 :
-            return self.ltnEncoding # filename ends in -l[tn[1]]
-        # Test for an HTML or XML file
-        fileSuffix = fileInfo.suffix() # QString of suffix from path
-        if fileSuffix == 'htm' or fileSuffix == 'html' or fileSuffix == 'xml':
-            if forInput :
-                # html file on disk: read 1K of it as UTF-8 (the standard says
-                # that much must be UTF or ascii) and look for charset parameter.
-                (htmStream, htmHandle) = self.openSomeFile(
-                    fileInfo.absoluteFilePath(), QIODevice.ReadOnly, self.utfEncoding )
-                if htmStream is None :
-                    return fallBack # couldn't open it: as forInput it fails
-                htmqs = htmStream.read(1024) # we opened it; grab first 1K
-                htmHandle.close() # and close it
-            else :
-                # html file still in memory. Get access to its first 1K from the
-                # editor document.
-                doc = IMC.editWidget.document()
-                tc = QTextCursor(doc)
-                tc.setPosition(0)
-                tc.setPosition(min(1024,doc.characterCount()),
-                               QTextCursor.KeepAnchor)
-                htmqs = tc.selectedText()
-            # The encoding names are specified to be from the IANA registry
-            # (http://www.iana.org/assignments/character-sets) which shows that
-            # there are no names with embedded spaces. So the regex can use
-            # a space, quote or > as a terminal marker.
-            htmRE = QRegExp(u'''(charset|encoding)\s*=\s*['"]?([\w\-\_\d]+)[;'">\s]''')
-            if htmRE.indexIn(htmqs) > -1 :
-                    return unicode(htmRE.cap(2))
-            # no charset parameter seen. Return the W3 standard encoding for HTML.
-            return self.utfEncoding
-        # Unhelpful file name and suffix. If this is an output file we can
-        # infer nothing more, but we can default to UTF8.
-        if not forInput :
-            return self.utfEncoding if fallBack is None else fallBack
-        # It's for input and we can't tell, so just return fallBack.
-        return fallBack
+        # Try utf-8 first, then latin-1. Order is important. That
+        # should cover all reasonable cases.
+        for codec in [ self.utfEncoding, self.ltnEncoding ]:
+            try:
+                # decode() will generate an exception if the codec is
+                # wrong.
+                text = rawdata.decode(unicode(codec))
+            except Exception:
+                continue
+
+            return codec
+
+        return None
+
 
     # -----------------------------------------------------------------
     # Take care of opening any file for input or output, with appropriate
@@ -935,7 +869,7 @@ class MainWindow(QMainWindow):
         metaInfo = QFileInfo(QString(unicode(bookPath) + u'.meta'))
         # Get the encoding if we weren't told it
         if encoding is None:
-            encoding = self.inferTheCodec(bookInfo,metaInfo,True,fallBack=None)
+            encoding = self.inferTheCodec(bookPath)
         if encoding is None: # cannot infer an encoding
             encoding = pqMsgs.utfLtnMsg(
                 u'Tell me the encoding for '+unicode(bookInfo.fileName()),
@@ -964,10 +898,7 @@ class MainWindow(QMainWindow):
                 goodwordsPath = bookDir.absoluteFilePath(listOfFiles[0])
                 (goodStream, goodHandle) = self.openSomeFile(
                     goodwordsPath, QIODevice.ReadOnly,
-                    self.inferTheCodec(QFileInfo(goodwordsPath),
-                                       QFileInfo(), True,
-                                       fallBack=self.ltnEncoding )
-                    )
+                    self.inferTheCodec(goodwordsPath))
             bookDir.setNameFilters( QStringList( QString( u'bad_words*.*') ) )
             listOfFiles = bookDir.entryList()
             if listOfFiles.count() > 0 :
@@ -975,10 +906,7 @@ class MainWindow(QMainWindow):
                 badwordsPath = bookDir.absoluteFilePath(listOfFiles[0])
                 (badStream, badHandle) = self.openSomeFile(
                         badwordsPath, QIODevice.ReadOnly,
-                        self.inferTheCodec(QFileInfo(badwordsPath),
-                                           QFileInfo(), True,
-                                           fallBack=self.ltnEncoding )
-                        )
+                        self.inferTheCodec(badwordsPath))
         # Make sure that the book itself will open. We checked it exists right
         # at the top, but the open could still fail somehow.
         (bookStream, bookHandle) = self.openSomeFile(
@@ -1001,9 +929,7 @@ class MainWindow(QMainWindow):
                     # open the .bin file, inferring the codec with Latin1 default
                     (binStream, metaHandle) = self.openSomeFile(
                     metaInfo.absoluteFilePath(), QIODevice.ReadOnly,
-                    self.inferTheCodec(metaInfo, QFileInfo(), True,
-                                       fallBack = self.ltnEncoding)
-                    )
+                    self.inferTheCodec(metaInfo.absoluteFilePath()))
                     # pass the book and bin streams to our conversion code to
                     # make a metadata stream in our format.
                     # Afterwards, metaHandle->bin file and metaStream contains
@@ -1163,7 +1089,7 @@ class MainWindow(QMainWindow):
                 "Save book text As", startPath)
         if not savename.isEmpty():
             finf = QFileInfo(savename)
-            IMC.bookSaveEncoding = self.inferTheCodec(finf, None, False, fallBack = IMC.bookSaveEncoding)
+            IMC.bookSaveEncoding = self.inferTheCodec(savename)
             IMC.bookPath= finf.absoluteFilePath()
             IMC.bookDirPath = finf.absolutePath()
             IMC.bookType = finf.suffix()
@@ -1211,7 +1137,7 @@ class MainWindow(QMainWindow):
             self.viewSetScannos(False) # turn it off
             IMC.scannoList.clear() # clear out the list
         scannoInfo = QFileInfo(self.scannoPath)
-        scannoCodec = self.inferTheCodec(scannoInfo,QFileInfo(),True, fallBack=self.utfEncoding)
+        scannoCodec = self.inferTheCodec(self.scannoPath)
         if scannoCodec is None :
             # can't get the encoding (v. unlikely), just silently steal away
             IMC.scannoHilitSwitch = False # make sure switch is off
@@ -1241,7 +1167,7 @@ class MainWindow(QMainWindow):
                 startPath)
         if not bfName.isEmpty(): # a file was chosen
             bfInfo = QFileInfo(bfName)
-            bfCodec = self.inferTheCodec(bfInfo,QFileInfo(),True,fallBack=self.utfEncoding)
+            bfCodec = self.inferTheCodec(bfName)
             (buttonStream, fh) = self.openSomeFile(bfName,
                                         QIODevice.ReadOnly, bfCodec)
             if buttonStream is not None:
@@ -1260,7 +1186,7 @@ class MainWindow(QMainWindow):
                 "Save user-defined buttons as:", startPath)
         if not bfName.isEmpty():
             bfInfo = QFileInfo(bfName)
-            bfCodec = self.inferTheCodec(bfInfo,QFileInfo(),False, fallBack=self.utfEncoding)
+            bfCodec = self.inferTheCodec(bfName)
             (buttonStream, fh) = self.openSomeFile(bfName,
                                         QIODevice.WriteOnly, bfCodec)
             if buttonStream is not None:
