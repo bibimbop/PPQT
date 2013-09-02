@@ -707,7 +707,7 @@ class MainWindow(QMainWindow):
         if not self.recentFiles.contains(fname):
             # it is not a dup, so add it at the end
             self.recentFiles.prepend(QString(fname))
-            while self.recentFiles.count() > 9:
+            while self.recentFiles.count() > 20:
                 # note dammit, QStringList is *supposed* to inherit removeLast()
                 # from QList, also .size() -- neither is true. Instead it has
                 # a .count() method, and does have removeAt, so that is how
