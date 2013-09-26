@@ -1050,6 +1050,10 @@ class MainWindow(QMainWindow):
                 pqMsgs.flash(u"Saving {0} as {1}".format(bookInfo.fileName(),IMC.bookSaveEncoding ),
                              msecs=5000)
                 self.editor.save(bookStream, metaStream)
+
+                if IMC.exportGuigutsSave:
+                    self.exportGuiguts()
+
                 retval = True # success
                 self.addRecentFile(IMC.bookPath)
                 self.setWinModStatus() # notice if metadata changed

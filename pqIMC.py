@@ -133,6 +133,7 @@ class tricorder():
         self.findPanel = None # ref to Find panel
         self.statusBar = None # ref to status bar of main window
         self.progressBar = None # ref to progress bar in status bar
+        self.exportGuigutsSave = False # Export to guiguts on saves
 
         # constant value for the line-delimiter used by QPlainTextEdit
         self.QtLineDelim = QChar(0x2029)

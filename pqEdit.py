@@ -469,6 +469,12 @@ class PPTextEditor(QPlainTextEdit):
         p1 = self.textCursor().selectionStart()
         p2 = self.textCursor().selectionEnd()
         metaStream << u"{{CURSOR "+unicode(p1)+u' '+unicode(p2)+u"}}\n"
+        metaStream << u"{{EXPORTTOGUIGUTS "
+        if IMC.exportGuigutsSave :
+            metaStream << u"TRUE"
+        else:
+            metaStream << u"FALSE"
+        metaStream << u"}}\n"
         metaStream.flush()
 
     # Implement load: the main window has the job of finding and opening files
@@ -516,7 +522,8 @@ class PPTextEditor(QPlainTextEdit):
         sectionRE = QRegExp( u"\{\{(" + '|'.join (
             ['PAGETABLE','CHARCENSUS','WORDCENSUS','BOOKMARKS',
              'NOTES','GOODWORDS','BADWORDS','CURSOR','VERSION',
-             'STALECENSUS','NEEDSPELLCHECK','ENCODING', 'DOCHASH', 'MAINDICT'] ) \
+             'STALECENSUS','NEEDSPELLCHECK','ENCODING', 'DOCHASH',
+             'MAINDICT', 'EXPORTTOGUIGUTS'] ) \
                              + u")(.*)\}\}",
             Qt.CaseSensitive)
         metaVersion = 0 # base version
@@ -607,6 +614,8 @@ class PPTextEditor(QPlainTextEdit):
                     tc.setPosition(int(p1p2[0]),QTextCursor.MoveAnchor)
                     tc.setPosition(int(p1p2[1]),QTextCursor.KeepAnchor)
                     self.setTextCursor(tc)
+                elif section == u"EXPORTTOGUIGUTS":
+                    IMC.exportGuigutsSave = argument == u"TRUE"
                 else:
                     # this can't happen; section is text captured by the RE
                     # and we have accounted for all possibilities

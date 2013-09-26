@@ -49,7 +49,8 @@ from PyQt4.QtGui import (
     QLabel,
     QPushButton,
     QRadioButton,
-    QVBoxLayout
+    QVBoxLayout,
+    QCheckBox
     )
 
 
@@ -94,6 +95,13 @@ class Properties(QDialog) :
         hb_enc.addWidget(gb_enc)
         vlayout.addLayout(hb_enc)
 
+        # Export to guiguts while saving
+        x = QHBoxLayout()
+        self.export_to_guiguts = QCheckBox(u'Export to Guiguts during saving')
+        self.export_to_guiguts.setChecked(self.IMC.exportGuigutsSave)
+        x.addWidget(self.export_to_guiguts)
+        vlayout.addLayout(x)
+
         # Next get a QStringList of available dicts from pqSpell
         # and create a combobox with that content.
         dictlist = IMC.spellCheck.dictList()
@@ -135,6 +143,7 @@ class Properties(QDialog) :
             self.saveEncoding = QString(u'ISO-8859-1')
     def dictChange(self):
         self.maintag = self.cb_dic.currentText()
+
     # Slot entered on Apply button: Store local items in the IMC, then quit
     def applyButtonHit(self) :
         self.IMC.bookSaveEncoding = self.saveEncoding
@@ -142,6 +151,7 @@ class Properties(QDialog) :
             self.IMC.bookMainDict = self.maintag
             self.IMC.needSpellCheck = True
             self.IMC.spellCheck.setMainDict(self.maintag)
+        self.IMC.exportGuigutsSave = self.export_to_guiguts.checkState()
         self.IMC.needMetadataSave |= self.IMC.propertyChanged
         self.accept()
     # Slot entered from Cancel button: just quit
